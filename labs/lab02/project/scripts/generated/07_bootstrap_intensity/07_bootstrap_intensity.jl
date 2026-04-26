@@ -1,0 +1,86 @@
+using DrWatson
+using StatsBase
+
+@quickactivate "project"
+
+using JLD2
+using Statistics
+using StatsBase
+using Plots
+using Random
+
+include(scriptsdir("params.jl"))
+
+Random.seed!(42)
+
+params = default_params
+
+filename = datadir("attack_sim", savename(params, "jld2"))
+
+if !isfile(filename)
+    error("Файл с результатами не найден: $filename. Сначала запусти scripts/run_experiment.jl")
+end
+
+@load filename data params
+
+hourly_counts = data[:hourly_counts]
+
+B = 10_000
+n = length(hourly_counts)
+
+bootstrap_means = Float64[]
+
+for _ in 1:B
+    bootstrap_sample = StatsBase.sample(hourly_counts, n; replace = true)
+    push!(bootstrap_means, mean(bootstrap_sample))
+end
+
+λ_hat = mean(hourly_counts)
+
+ci_low = quantile(bootstrap_means, 0.025)
+ci_high = quantile(bootstrap_means, 0.975)
+
+println("Оценка средней интенсивности λ̂ = ", λ_hat)
+println("95% bootstrap-доверительный интервал: [", ci_low, ", ", ci_high, "]")
+
+mkpath(plotsdir())
+
+p = histogram(
+    bootstrap_means;
+    bins = 40,
+    normalize = :pdf,
+    label = "Bootstrap-оценки",
+    xlabel = "Средняя интенсивность атак",
+    ylabel = "Плотность",
+    title = "Bootstrap-доверительный интервал для λ"
+)
+
+vline!(
+    p,
+    [λ_hat];
+    label = "λ̂",
+    linewidth = 2
+)
+
+vline!(
+    p,
+    [ci_low, ci_high];
+    label = "95% доверительный интервал",
+    linestyle = :dash,
+    linewidth = 2
+)
+
+plot_path = plotsdir("bootstrap_intensity.png")
+savefig(p, plot_path)
+display(p)
+
+mkpath(datadir("bootstrap"))
+
+data_path = datadir("bootstrap", "bootstrap_intensity.jld2")
+
+@save data_path bootstrap_means λ_hat ci_low ci_high params
+
+println("График сохранён в: ", plot_path)
+println("Данные сохранены в: ", data_path)
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl

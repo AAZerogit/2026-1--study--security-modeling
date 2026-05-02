@@ -1,0 +1,70 @@
+```{julia}
+# Поиск наиболее вероятного пути атаки
+```
+
+Скрипт строит граф атак, назначает рёбрам вероятности на основе CVSS
+и определяет наиболее вероятный путь от источника к цели.
+
+```{julia}
+using DrWatson
+
+@quickactivate "project"
+
+using Graphs
+using JLD2
+using Random
+
+include(srcdir("attack_graph.jl"))
+
+# Настройка графа
+
+Random.seed!(42)
+
+n = 12
+source = 1
+target = 12
+edge_prob = 0.25
+
+trust_relations = [
+    (1, 2),
+    (2, 4),
+    (4, 7),
+    (7, 10),
+    (10, 12)
+]
+
+g = build_attack_graph(n, edge_prob, Dict(), trust_relations)
+
+# Назначение вероятностей рёбрам
+
+cvss_scores = Dict{Tuple{Int, Int}, Float64}()
+
+for e in edges(g)
+    cvss = rand(3.0:0.1:10.0)
+    probability = cvss / 10.0
+    cvss_scores[(src(e), dst(e))] = probability
+end
+
+weights = assign_edge_weights(g, cvss_scores)
+
+# Поиск и сохранение результата
+
+best_path, best_probability = most_likely_path(g, source, target, weights)
+
+mkpath(datadir("extra"))
+
+data_path = datadir("extra", "cvss_path.jld2")
+
+@save data_path g cvss_scores weights best_path best_probability source target
+
+println("Источник: ", source)
+println("Цель: ", target)
+println("Наиболее вероятный путь: ", best_path)
+println("Вероятность пути: ", best_probability)
+println("Данные сохранены в: ", data_path)
+```
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+

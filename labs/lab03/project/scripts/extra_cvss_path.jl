@@ -1,0 +1,50 @@
+using DrWatson
+
+@quickactivate "project"
+
+using Graphs
+using JLD2
+using Random
+
+include(srcdir("attack_graph.jl"))
+
+Random.seed!(42)
+
+n = 12
+source = 1
+target = 12
+edge_prob = 0.25
+
+trust_relations = [
+    (1, 2),
+    (2, 4),
+    (4, 7),
+    (7, 10),
+    (10, 12)
+]
+
+g = build_attack_graph(n, edge_prob, Dict(), trust_relations)
+
+cvss_scores = Dict{Tuple{Int, Int}, Float64}()
+
+for e in edges(g)
+    cvss = rand(3.0:0.1:10.0)
+    probability = cvss / 10.0
+    cvss_scores[(src(e), dst(e))] = probability
+end
+
+weights = assign_edge_weights(g, cvss_scores)
+
+best_path, best_probability = most_likely_path(g, source, target, weights)
+
+mkpath(datadir("extra"))
+
+data_path = datadir("extra", "cvss_path.jld2")
+
+@save data_path g cvss_scores weights best_path best_probability source target
+
+println("Источник: ", source)
+println("Цель: ", target)
+println("Наиболее вероятный путь: ", best_path)
+println("Вероятность пути: ", best_probability)
+println("Данные сохранены в: ", data_path)

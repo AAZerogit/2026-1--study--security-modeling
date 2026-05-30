@@ -6,9 +6,12 @@
   "repository": "ssh://git@gitverse.ru:2222/buzzeroanton/2026-1--study--security-modeling.git",
   "author": " <>",
   "license": "CC-BY-4.0",
-    "config": {
-	"commitizen": {
-	    "path": "cz-customizable"
-	}
+  "config": {
+    "commitizen": {
+      "path": "cz-customizable"
     }
+  },
+  "devDependencies": {
+    "cz-customizable": "^7.5.4"
+  }
 }
